@@ -1,0 +1,7 @@
+village_system.db
+uploads/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
