@@ -1,4 +1,5 @@
 from flask import Flask, request, redirect, session, send_file, render_template_string
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
 from io import BytesIO
@@ -89,6 +90,17 @@ def get_db():
 def create_database():
 
     conn = get_db()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS villages (
@@ -252,6 +264,34 @@ def create_database():
 
 
 create_database()
+
+def create_admin_user():
+    conn = get_db()
+
+    admin_user = os.environ.get("ADMIN_USER")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if admin_user and admin_password:
+        existing_admin = conn.execute(
+            "SELECT id FROM users WHERE user_id = ?",
+            (admin_user,)
+        ).fetchone()
+
+        if existing_admin is None:
+            conn.execute(
+                "INSERT INTO users (user_id, password_hash, role) VALUES (?, ?, ?)",
+                (
+                    admin_user,
+                    generate_password_hash(admin_password),
+                    "admin"
+                )
+            )
+            conn.commit()
+
+    conn.close()
+
+
+create_admin_user()
 
 
 # =========================================================
@@ -1238,16 +1278,22 @@ def login():
         user_id = request.form.get("user_id", "").strip()
         password = request.form.get("password", "")
 
-        # Login details
-        LOGIN_USER = "Manikrishna"
-        LOGIN_PASSWORD = "9966995512"
+        conn = get_db()
 
-        if user_id == LOGIN_USER and password == LOGIN_PASSWORD:
+        user = conn.execute(
+            "SELECT * FROM users WHERE user_id = ? AND active = 1",
+            (user_id,)
+        ).fetchone()
+
+        conn.close()
+
+        if user and check_password_hash(user["password_hash"], password):
             session["logged_in"] = True
+            session["user_id"] = user["user_id"]
+            session["role"] = user["role"]
             return redirect("/dashboard")
 
         error = True
-
     return render_template_string(
         STYLE + """
         <div class="container">
