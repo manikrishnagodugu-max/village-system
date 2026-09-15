@@ -860,12 +860,14 @@ body {
     font-family: Arial, sans-serif;
     min-height: 100vh;
     background:
-        linear-gradient(
-            rgba(255, 255, 255, 0.12),
-            rgba(255, 255, 255, 0.12)
-        ),
-        url("/static/village.jpg");
-            background-size: cover;
+    linear-gradient(
+        135deg,
+        #e0f2fe 0%,
+        #f8fafc 50%,
+        #dbeafe 100%
+    );
+
+    background-size: cover;
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -2212,118 +2214,537 @@ def dashboard():
     villages = conn.execute("""
         SELECT *
         FROM villages
-        ORDER BY name
+        `ORDER BY name`
     """).fetchall()
 
-    conn.close()
+    # Total statistics
+    population = conn.execute("""
+        SELECT COALESCE(SUM(population), 0)
+        FROM village_info
+    """).fetchone()[0]
+
+    houses = conn.execute("""
+        SELECT COALESCE(SUM(houses), 0)
+        FROM village_info
+    """).fetchone()[0]
+
+    family_members = conn.execute("""
+        SELECT COUNT(*)
+        FROM family_members
+    """).fetchone()[0]
+
+    important_details = conn.execute("""
+        SELECT COUNT(*)
+        FROM important_details
+    """).fetchone()[0]
 
     village_count = len(villages)
 
+    conn.close()
+
     return render_template_string(
-    STYLE + """
+        STYLE + """
 
-    <div class="container">
+<style>
 
-        <div class="dashboard-title">
-            🏡 Village Information Dashboard
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #eef5fb;
+}
+
+.dashboard-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #092a55, #12284a);
+    color: white;
+    padding-top: 20px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+}
+
+.sidebar-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.sidebar-menu {
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 18px 25px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.sidebar-menu a:hover {
+    background: #1477df;
+}
+
+.main-content {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+}
+
+.top-header {
+    background: linear-gradient(90deg, #063b78, #0877dc);
+    color: white;
+    padding: 22px 35px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.village-name {
+    font-size: 34px;
+    font-weight: bold;
+}
+
+.village-subtitle {
+    font-size: 18px;
+    margin-top: 5px;
+}
+
+.admin-box {
+    background: rgba(0,0,0,0.18);
+    padding: 15px 25px;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.content {
+    padding: 25px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 22px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+
+.stat-icon {
+    font-size: 45px;
+}
+
+.stat-number {
+    font-size: 38px;
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+.stat-title {
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.options-card {
+    background: white;
+    border-radius: 18px;
+    padding: 25px;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.12);
+}
+
+.options-title {
+    color: #17467d;
+    font-size: 30px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 15px;
+}
+
+.options-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(220px, 1fr)) !important;
+    gap: 16px;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.options-card {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box;
+}
+
+.option-btn {
+    color: white;
+    text-decoration: none;
+    padding: 18px 12px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 17px;
+    font-weight: bold;
+    display: block;
+}
+
+.option-btn:hover {
+    opacity: 0.88;
+    transform: translateY(-2px);
+}
+
+.green { background: #16ad57; }
+.blue { background: #0879e6; }
+.purple { background: #7737e8; }
+.orange { background: #f58a0b; }
+.red { background: #ed3030; }
+.teal { background: #079eaa; }
+.gold { background: #d39b00; }
+.gray { background: #50627a; }
+
+.footer {
+    margin-top: 25px;
+    background: #dff7e9;
+    padding: 22px;
+    border-radius: 15px;
+    text-align: center;
+    color: #13733b;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+@media (max-width: 1000px) {
+
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .options-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 650px) {
+
+    .sidebar {
+        width: 75px;
+    }
+
+    .sidebar-title {
+        font-size: 0;
+    }
+
+    .sidebar-menu a {
+        font-size: 0;
+        text-align: center;
+        padding: 18px 5px;
+    }
+
+    .main-content {
+        margin-left: 75px;
+        width: calc(100% - 75px);
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .top-header {
+        padding: 15px;
+    }
+
+    .village-name {
+        font-size: 24px;
+    }
+}
+
+</style>
+
+
+<div class="dashboard-wrapper">
+
+    <!-- SIDEBAR -->
+
+    <div class="sidebar">
+
+        <div class="sidebar-title">
+            🏠 Village
         </div>
 
-        <div class="dashboard-subtitle">
-            Manage all village information in one place
-        </div>
+        <div class="sidebar-menu">
 
-        <a
-            href="/add-village"
-            class="dashboard-add-btn"
->
-    ➕ Add Village
-</a>
+            <a href="/dashboard">🏠 Dashboard</a>
 
-        <a
-          href="/logout"
-          class="dashboard-btn dashboard-delete"
-          style="display:block;width:fit-content;margin:10px auto 25px auto;"
->
-    🔒 Logout
-</a>
-
-
-        <!-- TOTAL VILLAGES -->
-
-        <div class="dashboard-stat">
-
-            <div class="dashboard-stat-icon">
-                🏘️
-            </div>
-
-            <div class="dashboard-stat-title">
-                Total Villages
-            </div>
-
-            <div class="dashboard-stat-number">
-                {{ village_count }}
-            </div>
-
-        </div>
-
-
-        <!-- VILLAGE LIST -->
-
-        {% for village in villages %}
-
-        <div class="village-dashboard-card">
-
-            <div class="village-dashboard-name">
-                🏡 {{ village["name"] }}
-            </div>
-
-
-            <a
-                class="dashboard-btn dashboard-open"
-                href="/village/{{ village['id'] }}"
-            >
-                🏠 Open Village
+            {% if villages %}
+            <a href="/village/{{ villages[0]['id'] }}">
+                🏢 Village Information
             </a>
 
-
-            <a
-                class="dashboard-btn dashboard-important"
-                href="/important/{{ village['id'] }}"
-            >
-                📁 Important Details
+            <a href="/families/{{ villages[0]['id'] }}">
+                👥 Family Members
             </a>
 
-
-            <a
-                class="dashboard-btn dashboard-edit"
-                href="/edit-village/{{ village['id'] }}"
-            >
-                ✏️ Edit
+            <a href="/important/{{ villages[0]['id'] }}">
+                📋 Important Details
             </a>
 
-
-            {% if village["name"] != "Gurrampalem" %}
-
-            <a
-                class="dashboard-btn dashboard-delete"
-                href="/delete-village/{{ village['id'] }}"
-                onclick="return confirm('Delete village?')"
-            >
-                🗑️ Delete
+            <a href="/members-reports/{{ villages[0]['id'] }}">
+                📊 Reports
             </a>
 
+            <a href="/export-excel/{{ villages[0]['id'] }}">
+                📥 Export / Download
+            </a>
             {% endif %}
 
-        </div>
+            <a href="/logout">
+                🚪 Logout
+            </a>
 
-        {% endfor %}
+        </div>
 
     </div>
 
-    """,
-    village_count=village_count,
-    villages=villages
-)
+
+    <!-- MAIN CONTENT -->
+
+    <div class="main-content">
+
+        <!-- HEADER -->
+
+        <div class="top-header">
+
+            <div>
+                <div class="village-name">
+                    🏠
+                    {% if villages %}
+                        {{ villages[0]["name"] }}
+                    {% else %}
+                        Village Information
+                    {% endif %}
+                </div>
+
+                <div class="village-subtitle">
+                    Our Village • Our People • Our Future
+                </div>
+            </div>
+
+            <div class="admin-box">
+                👤 Admin
+            </div>
+
+        </div>
+
+
+        <div class="content">
+
+
+            <!-- STATISTICS -->
+
+            <div class="stats">
+
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number">
+                        {{ population }}
+                    </div>
+                    <div class="stat-title">
+                        Population
+                    </div>
+                </div>
+
+
+                <div class="stat-card">
+                    <div class="stat-icon">🏠</div>
+                    <div class="stat-number">
+                        {{ houses }}
+                    </div>
+                    <div class="stat-title">
+                        Houses
+                    </div>
+                </div>
+
+
+                <div class="stat-card">
+                    <div class="stat-icon">👨‍👩‍👧</div>
+                    <div class="stat-number">
+                        {{ family_members }}
+                    </div>
+                    <div class="stat-title">
+                        Family Members
+                    </div>
+                </div>
+
+
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-number">
+                        {{ important_details }}
+                    </div>
+                    <div class="stat-title">
+                        Important Details
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- VILLAGE OPTIONS -->
+
+            <div class="options-card">
+
+                <h2 class="options-title">
+                    ▦ Village Options
+                </h2>
+
+                <div class="options-grid">
+
+                    {% if villages %}
+
+                    <a class="option-btn green"
+                       href="/families/{{ villages[0]['id'] }}">
+                        👨‍👩‍👧 Family Information
+                    </a>
+
+                    <a class="option-btn blue"
+                       href="/family-members-report/{{ villages[0]['id'] }}">
+                        👤 Members
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/members-reports/{{ villages[0]['id'] }}">
+                        📋 Members Reports
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/father-husband-report/{{ villages[0]['id'] }}">
+                        👨 Father / Husband Names
+                    </a>
+
+                    <a class="option-btn orange"
+                       href="/mother-wife-report/{{ villages[0]['id'] }}">
+                        👩 Mother / Wife Names
+                    </a>
+
+                    <a class="option-btn teal"
+                       href="/date-of-birth-report/{{ villages[0]['id'] }}">
+                        📅 Date of Birth
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/relationship-report/{{ villages[0]['id'] }}">
+                        🔗 Relationship
+                    </a>
+
+                    <a class="option-btn orange"
+                       href="/occupation-report/{{ villages[0]['id'] }}">
+                        💼 Occupation
+                    </a>
+
+                    <a class="option-btn red"
+                       href="/disability-report/{{ villages[0]['id'] }}">
+                        ♿ Disability
+                    </a>
+
+                    <a class="option-btn teal"
+                       href="/blood-group-report/{{ villages[0]['id'] }}">
+                        💧 Blood Group
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/bank-account-report/{{ villages[0]['id'] }}">
+                        🏦 Bank Accounts
+                    </a>
+
+                    <a class="option-btn blue"
+                       href="/ifsc-report/{{ villages[0]['id'] }}">
+                        🏦 IFSC Codes
+                    </a>
+
+                    <a class="option-btn green"
+                       href="/voter-id-report/{{ villages[0]['id'] }}">
+                        🪪 Voter IDs
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/ration-card-report/{{ villages[0]['id'] }}">
+                        🪪 Ration Cards
+                    </a>
+
+                    <a class="option-btn gold"
+                       href="/family-reports/{{ villages[0]['id'] }}">
+                        📊 Family Reports
+                    </a>
+
+                    <a class="option-btn gray"
+                       href="/village/{{ villages[0]['id'] }}">
+                        ℹ Village Information
+                    </a>
+
+                    <a class="option-btn red"
+                       href="/important/{{ villages[0]['id'] }}">
+                        📁 Important Details
+                    </a>
+
+                    <a class="option-btn blue"
+                       href="/export-excel/{{ villages[0]['id'] }}">
+                        📗 Village Excel
+                    </a>
+
+                    <a class="option-btn purple"
+                       href="/export-word/{{ villages[0]['id'] }}">
+                        📘 Village Word
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+            <!-- FOOTER -->
+
+            <div class="footer">
+                🌱 “A Strong Village Builds a Stronger Nation”
+                <br>
+                Gurrampalem Village Information System
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+""",
+        villages=villages,
+        population=population,
+        houses=houses,
+        family_members=family_members,
+        important_details=important_details
+    )
 
 
 # =========================================================
@@ -5377,8 +5798,176 @@ def family_full_page(village_id, family_id):
 
         return render_template_string(
             STYLE + """
+
+            <style>
+
+.family-full-header {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+    border-left: 6px solid #0879e6;
+}
+
+.family-full-header h1 {
+    color: #17467d;
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.family-full-header h2 {
+    color: #333;
+    font-size: 22px;
+    margin-bottom: 18px;
+}
+
+.family-id-badge,
+.family-member-count {
+    display: inline-block;
+    background: #e8f1ff;
+    color: #17467d;
+    padding: 10px 18px;
+    border-radius: 20px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.family-detail-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+}
+
+.family-profile-header {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 25px;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.family-profile-photo {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 4px solid #e3edff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.family-profile-placeholder {
+    width: 200px;
+    height: 200px;
+    border-radius: 18px;
+    background: #eef4ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 70px;
+}
+
+.family-profile-header h2 {
+    font-size: 26px;
+    color: #17467d;
+}
+
+.family-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.family-detail-item {
+    background: #f6f9fd;
+    border: 1px solid #dce8f5;
+    border-radius: 12px;
+    padding: 15px;
+    min-height: 65px;
+}
+
+.family-detail-item span {
+    display: block;
+    color: #667085;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 7px;
+}
+
+.family-detail-item b {
+    color: #172b4d;
+    font-size: 16px;
+    word-break: break-word;
+}
+
+.family-detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.family-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.family-edit-btn,
+.family-delete-btn {
+    display: inline-block;
+    padding: 12px 25px;
+    border-radius: 10px;
+    color: white !important;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.family-edit-btn {
+    background: #0879e6;
+}
+
+.family-delete-btn {
+    background: #ed3030;
+}
+
+.family-edit-btn:hover,
+.family-delete-btn:hover {
+    opacity: 0.85;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 900px) {
+    .family-profile-header {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .family-profile-photo,
+    .family-profile-placeholder {
+        margin: auto;
+    }
+
+    .family-detail-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .family-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .family-profile-photo,
+    .family-profile-placeholder {
+        width: 160px;
+        height: 160px;
+    }
+}
+
+</style>
         
-        <div class="container">
+<div class="container">
 
             <div class="card family-full-header">
 
@@ -5546,7 +6135,7 @@ def family_full_page(village_id, family_id):
 
             <a
                 class="btn gray"
-                href="/families/{{ village_id }}"
+                href="/families/{{ village['id'] }}"
             >
                 ← Back to Family Information
             </a>
@@ -5847,6 +6436,7 @@ def add_family(village_id):
 
     return render_template_string(
         STYLE + """
+        
         <div class="container">
 
             <div class="card">
