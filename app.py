@@ -1295,43 +1295,354 @@ def login():
 
         error = True
     return render_template_string(
-        STYLE + """
-        <div class="container">
-            <div class="card"
-                 style="max-width:430px;margin:80px auto;text-align:center;">
+    """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-                <h1>🏠 Village Information</h1>
+        <title>Secure Login - Village Information</title>
 
-                <h2>Secure Login</h2>
+        <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+
+            background:
+                radial-gradient(circle at top left, #2563eb 0%, transparent 35%),
+                radial-gradient(circle at bottom right, #0ea5e9 0%, transparent 35%),
+                linear-gradient(135deg, #0f172a, #1e3a8a);
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+        }
+
+        .login-card {
+            position: relative;
+            background: rgba(255,255,255,0.97);
+            border-radius: 28px;
+            padding: 40px 35px;
+            text-align: center;
+
+            box-shadow:
+                0 25px 70px rgba(0,0,0,0.35),
+                0 0 0 1px rgba(255,255,255,0.25);
+        }
+
+        .lock-circle {
+            width: 88px;
+            height: 88px;
+            margin: -78px auto 18px;
+
+            border-radius: 50%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+
+            font-size: 42px;
+
+            box-shadow:
+                0 15px 30px rgba(37,99,235,0.40);
+        }
+
+        .title {
+            margin: 8px 0 5px;
+            font-size: 28px;
+            font-weight: 800;
+            color: #172554;
+        }
+
+        .subtitle {
+            margin-bottom: 28px;
+            color: #64748b;
+            font-size: 15px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 18px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            z-index: 2;
+        }
+
+        .login-input {
+            width: 100%;
+            height: 55px;
+
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+
+            padding: 0 48px;
+
+            font-size: 16px;
+            outline: none;
+
+            transition: 0.25s;
+            background: #f8fafc;
+        }
+
+        .login-input:focus {
+            border-color: #2563eb;
+            background: white;
+
+            box-shadow:
+                0 0 0 4px rgba(37,99,235,0.12);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            border: none;
+            background: transparent;
+
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .login-button {
+            width: 100%;
+            height: 55px;
+
+            margin-top: 8px;
+
+            border: none;
+            border-radius: 14px;
+
+            background: linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
+            color: white;
+
+            font-size: 17px;
+            font-weight: 700;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 12px 25px rgba(37,99,235,0.30);
+
+            transition: 0.25s;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 16px 30px rgba(37,99,235,0.40);
+        }
+
+        .security {
+            margin-top: 22px;
+
+            padding: 12px;
+
+            border-radius: 12px;
+
+            background: #eff6ff;
+            color: #1e40af;
+
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .error {
+            margin-top: 15px;
+
+            padding: 10px;
+
+            border-radius: 10px;
+
+            background: #fee2e2;
+            color: #b91c1c;
+
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: 22px;
+
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 500px) {
+
+            .login-wrapper {
+                padding: 15px;
+            }
+
+            .login-card {
+                padding: 35px 22px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+        }
+
+        </style>
+    </head>
+
+    <body>
+
+        <div class="login-wrapper">
+
+            <div class="login-card">
+
+                <div class="lock-circle">
+                    🔐
+                </div>
+
+                <div class="title">
+                    Village Information
+                </div>
+
+                <div class="subtitle">
+                    Secure Administrator Login
+                </div>
 
                 <form method="POST">
 
-                    <input type="text"
-                           name="user_id"
-                           placeholder="User ID"
-                           required>
+                    <div class="input-group">
 
-                    <input type="password"
-                           name="password"
-                           placeholder="Password"
-                           required>
+                        <span class="input-icon">
+                            👤
+                        </span>
 
-                    <button class="blue" type="submit">
-                        🔐 Login
+                        <input
+                            class="login-input"
+                            type="text"
+                            name="user_id"
+                            placeholder="Enter User ID"
+                            autocomplete="username"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="input-group">
+
+                        <span class="input-icon">
+                            🔑
+                        </span>
+
+                        <input
+                            class="login-input"
+                            id="loginPassword"
+                            type="password"
+                            name="password"
+                            placeholder="Enter Password"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            onclick="togglePassword()"
+                            id="passwordButton"
+                        >
+                            👁️
+                        </button>
+
+                    </div>
+
+
+                    <button
+                        class="login-button"
+                        type="submit"
+                    >
+                        🔓 Secure Login
                     </button>
 
                 </form>
 
+
                 {% if error %}
-                    <p style="color:red;">
-                        Invalid login details
-                    </p>
+
+                    <div class="error">
+                        ❌ Invalid User ID or Password
+                    </div>
+
                 {% endif %}
 
+
+                <div class="security">
+                    🛡️ Authorized Users Only
+                </div>
+
+                <div class="footer">
+                    © Village Information System
+                </div>
+
             </div>
+
         </div>
-        """
-    )
+
+
+        <script>
+
+        function togglePassword() {
+
+            const password =
+                document.getElementById("loginPassword");
+
+            const button =
+                document.getElementById("passwordButton");
+
+            if (password.type === "password") {
+
+                password.type = "text";
+                button.innerHTML = "🙈";
+
+            } else {
+
+                password.type = "password";
+                button.innerHTML = "👁️";
+
+            }
+
+        }
+
+        </script>
+
+    </body>
+    </html>
+    """,
+    error=error
+)
 
     # Wrong login
     error = True
