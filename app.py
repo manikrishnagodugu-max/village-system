@@ -3219,6 +3219,8 @@ def village_page(village_id):
     if not logged_in():
         return redirect("/")
 
+    return redirect("/dashboard")
+
     conn = get_db()
 
     village = conn.execute("""
