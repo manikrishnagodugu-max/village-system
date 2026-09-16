@@ -180,9 +180,30 @@ def create_database():
         )
     """)
 
+    # =========================================================
+    # APPLICATIONS / REQUESTS
+    # =========================================================
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            village_id INTEGER NOT NULL,
+            applicant_name TEXT NOT NULL,
+            mobile TEXT DEFAULT '',
+            request_type TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            status TEXT DEFAULT 'Pending',
+            request_date TEXT DEFAULT CURRENT_TIMESTAMP,
+            remarks TEXT DEFAULT '',
+            FOREIGN KEY(village_id)
+            REFERENCES villages(id)
+        )
+    """)
+
     conn.commit()
 
-        # =====================================================
+
+    # =====================================================
     # ADD NEW FAMILY MEMBER DETAILS
     # =====================================================
 
@@ -2349,6 +2370,1027 @@ function togglePassword() {
 </body>
 </html>
 """, error=error)
+
+# =========================================================
+# NEW APPLICATION / REQUEST
+# =========================================================
+
+@app.route("/new-application/<int:village_id>", methods=["GET", "POST"])
+def new_application(village_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    village = conn.execute("""
+        SELECT *
+        FROM villages
+        WHERE id = ?
+    """, (village_id,)).fetchone()
+
+    if village is None:
+        conn.close()
+        return "Village not found."
+
+    if request.method == "POST":
+
+        applicant_name = request.form.get("applicant_name", "").strip()
+        mobile = request.form.get("mobile", "").strip()
+        request_type = request.form.get("request_type", "").strip()
+        description = request.form.get("description", "").strip()
+        remarks = request.form.get("remarks", "").strip()
+
+        if not applicant_name:
+            conn.close()
+            return "Applicant Name is required."
+
+        conn.execute("""
+            INSERT INTO applications (
+                village_id,
+                applicant_name,
+                mobile,
+                request_type,
+                description,
+                status,
+                remarks
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            village_id,
+            applicant_name,
+            mobile,
+            request_type,
+            description,
+            "Pending",
+            remarks
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(
+            "/applications/" + str(village_id)
+        )
+
+    conn.close()
+
+    return render_template_string(
+        STYLE + """
+
+        <div class="container">
+
+            <div class="card">
+
+                <h1>📝 New Application / Request</h1>
+
+                <h3>
+                    🏘️ Village:
+                    {{ village["name"] }}
+                </h3>
+
+                <form method="POST">
+
+                    <label>Applicant Name</label>
+
+                    <input
+                        type="text"
+                        name="applicant_name"
+                        required
+                        placeholder="Enter applicant name"
+                    >
+
+                    <label>Mobile Number</label>
+
+                    <input
+                        type="text"
+                        name="mobile"
+                        placeholder="Enter mobile number"
+                    >
+
+                    <label>Request Type</label>
+
+                    <select name="request_type">
+
+                        <option value="">
+                            -- Select Request Type --
+                        </option>
+
+                        <option value="Certificate">
+                            Certificate
+                        </option>
+
+                        <option value="Land">
+                            Land Related
+                        </option>
+
+                        <option value="House">
+                            House Related
+                        </option>
+
+                        <option value="Pension">
+                            Pension
+                        </option>
+
+                        <option value="Government Scheme">
+                            Government Scheme
+                        </option>
+
+                        <option value="Other">
+                            Other
+                        </option>
+
+                    </select>
+
+                    <label>Description</label>
+
+                    <textarea
+                        name="description"
+                        rows="5"
+                        placeholder="Enter request details"
+                    ></textarea>
+
+                    <label>Remarks</label>
+
+                    <textarea
+                        name="remarks"
+                        rows="3"
+                        placeholder="Enter remarks"
+                    ></textarea>
+
+                    <br>
+
+                    <button
+                        type="submit"
+                        class="modern-btn btn-info"
+                    >
+                        💾 Submit Application
+                    </button>
+
+                    <a
+                        href="/village/{{ village['id'] }}"
+                        class="modern-btn btn-back"
+                    >
+                        ← Back
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        """,
+        village=village
+    )
+
+# =========================================================
+# APPLICATIONS / REQUESTS LIST
+# =========================================================
+
+@app.route("/applications/<int:village_id>")
+def applications(village_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    village = conn.execute("""
+        SELECT *
+        FROM villages
+        WHERE id = ?
+    """, (village_id,)).fetchone()
+
+    if village is None:
+        conn.close()
+        return "Village not found."
+
+    status = request.args.get("status", "").strip()
+
+    if status in ["Pending", "Approved", "Rejected"]:
+        applications = conn.execute("""
+            SELECT *
+            FROM applications
+            WHERE village_id = ?
+              AND status = ?
+            ORDER BY id DESC
+        """, (village_id, status)).fetchall()
+    else:
+        applications = conn.execute("""
+            SELECT *
+            FROM applications
+            WHERE village_id = ?
+            ORDER BY id DESC
+        """, (village_id,)).fetchall()
+
+    pending_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM applications
+        WHERE village_id = ?
+          AND status = 'Pending'
+    """, (village_id,)).fetchone()[0]
+
+    approved_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM applications
+        WHERE village_id = ?
+          AND status = 'Approved'
+    """, (village_id,)).fetchone()[0]
+
+    rejected_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM applications
+        WHERE village_id = ?
+          AND status = 'Rejected'
+    """, (village_id,)).fetchone()[0]
+
+    conn.close()
+
+    return render_template_string(
+        STYLE + """
+
+        <div class="container">
+
+            <div class="card">
+
+                <h1>📋 Applications / Requests</h1>
+
+                <h3>
+                    🏘️ Village: {{ village["name"] }}
+                </h3>
+
+                <div style="
+                    display:flex;
+                    gap:15px;
+                    flex-wrap:wrap;
+                    margin:20px 0;
+                ">
+
+                    <a
+                        href="/new-application/{{ village['id'] }}"
+                        class="modern-btn btn-info"
+                    >
+                        📝 New Application
+                    </a>
+
+                    <a
+                        href="/applications/{{ village['id'] }}"
+                        class="modern-btn"
+                    >
+                        📋 All
+                    </a>
+
+                    <a
+                        href="/applications/{{ village['id'] }}?status=Pending"
+                        class="modern-btn"
+                    >
+                        ⏳ Pending ({{ pending_count }})
+                    </a>
+
+                    <a
+                        href="/applications/{{ village['id'] }}?status=Approved"
+                        class="modern-btn"
+                    >
+                        ✅ Approved ({{ approved_count }})
+                    </a>
+
+                    <a
+                        href="/applications/{{ village['id'] }}?status=Rejected"
+                        class="modern-btn"
+                    >
+                        ❌ Rejected ({{ rejected_count }})
+                    </a>
+
+                </div>
+
+                {% if applications %}
+
+                <div style="overflow-x:auto;">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+                                <th>ID</th>
+                                <th>Applicant Name</th>
+                                <th>Mobile</th>
+                                <th>Request Type</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Remarks</th>
+                                <th>Actions</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for a in applications %}
+
+                            <tr>
+
+                                <td>{{ a["id"] }}</td>
+
+                                <td>
+                                    <strong>
+                                        {{ a["applicant_name"] }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    {{ a["mobile"] or "-" }}
+                                </td>
+
+                                <td>
+                                    {{ a["request_type"] or "-" }}
+                                </td>
+
+                                <td>
+                                    {{ a["description"] or "-" }}
+                                </td>
+
+                                <td>
+
+                                    {% if a["status"] == "Pending" %}
+
+                                        <span>
+                                            ⏳ Pending
+                                        </span>
+
+                                    {% elif a["status"] == "Approved" %}
+
+                                        <span>
+                                            ✅ Approved
+                                        </span>
+
+                                    {% elif a["status"] == "Rejected" %}
+
+                                        <span>
+                                            ❌ Rejected
+                                        </span>
+
+                                    {% else %}
+
+                                        {{ a["status"] }}
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    {{ a["request_date"] }}
+                                </td>
+
+                                <td>
+                                    {{ a["remarks"] or "-" }}
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% else %}
+
+                    <div class="card">
+
+                        <h3>
+                            No applications found.
+                        </h3>
+
+                        <p>
+                            Click "New Application" to add a request.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+                <br>
+
+                <a
+                    href="/village/{{ village['id'] }}"
+                    class="modern-btn btn-back"
+                >
+                    ← Back to Village
+                </a>
+
+            </div>
+
+        </div>
+
+        """,
+        village=village,
+        applications=applications,
+        pending_count=pending_count,
+        approved_count=approved_count,
+        rejected_count=rejected_count
+    )
+
+# =========================================================
+# UPDATE APPLICATION STATUS
+# =========================================================
+
+@app.route("/application-status/<int:application_id>/<status>")
+def application_status(application_id, status):
+
+    if not logged_in():
+        return redirect("/")
+
+    if status not in ["Pending", "Approved", "Rejected"]:
+        return "Invalid status."
+
+    conn = get_db()
+
+    application = conn.execute("""
+        SELECT village_id
+        FROM applications
+        WHERE id = ?
+    """, (application_id,)).fetchone()
+
+    if application is None:
+        conn.close()
+        return "Application not found."
+
+    village_id = application["village_id"]
+
+    conn.execute("""
+        UPDATE applications
+        SET status = ?
+        WHERE id = ?
+    """, (status, application_id))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(
+        "/applications/" + str(village_id)
+    )
+
+
+# =========================================================
+# DELETE APPLICATION
+# =========================================================
+
+@app.route("/delete-application/<int:application_id>")
+def delete_application(application_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    application = conn.execute("""
+        SELECT village_id
+        FROM applications
+        WHERE id = ?
+    """, (application_id,)).fetchone()
+
+    if application is None:
+        conn.close()
+        return "Application not found."
+
+    village_id = application["village_id"]
+
+    conn.execute("""
+        DELETE FROM applications
+        WHERE id = ?
+    """, (application_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(
+        "/applications/" + str(village_id)
+    )
+
+# =========================================================
+# VILLAGE INFORMATION REPORT
+# =========================================================
+
+@app.route("/village-info/<int:village_id>")
+def village_info_report(village_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    village = conn.execute("""
+        SELECT *
+        FROM villages
+        WHERE id = ?
+    """, (village_id,)).fetchone()
+
+    if village is None:
+        conn.close()
+        return "Village not found."
+
+    info = conn.execute("""
+        SELECT *
+        FROM village_info
+        WHERE village_id = ?
+    """, (village_id,)).fetchone()
+
+    family_count = conn.execute("""
+        SELECT COUNT(DISTINCT family_id)
+        FROM family_members
+        WHERE village_id = ?
+    """, (village_id,)).fetchone()[0]
+
+    male_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM family_members
+        WHERE village_id = ?
+        AND gender = 'Male'
+    """, (village_id,)).fetchone()[0]
+
+    female_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM family_members
+        WHERE village_id = ?
+        AND gender = 'Female'
+    """, (village_id,)).fetchone()[0]
+
+    member_count = conn.execute("""
+        SELECT COUNT(*)
+        FROM family_members
+        WHERE village_id = ?
+    """, (village_id,)).fetchone()[0]
+
+    conn.close()
+
+    return render_template_string(
+        STYLE + """
+
+        <div class="container">
+
+            <div class="card">
+
+                <h1 style="text-align:center;">
+                    🏘️ Village Information
+                </h1>
+
+                <h2 style="text-align:center;">
+                    {{ village["name"] }}
+                </h2>
+
+        <div style="text-align:center; margin:15px 0;">
+
+        <a
+            href="/edit-village-info/{{ village['id'] }}"
+            class="modern-btn btn-info"
+        >
+            ✏️ Edit Village Information
+        </a>
+
+    </div>
+
+                <p style="text-align:center;">
+                    Complete Village Information Report
+                </p>
+
+                <hr>
+
+                <h2>📍 Basic Village Details</h2>
+
+                <table>
+
+                    <tr>
+                        <th>Village Name</th>
+                        <td>{{ village["name"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Village Code</th>
+                        <td>{{ village["village_code"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Mandal</th>
+                        <td>{{ village["mandal"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>District</th>
+                        <td>{{ village["district"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>PIN Code</th>
+                        <td>{{ village["pin_code"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Habitation</th>
+                        <td>{{ village["habitation"] or "-" }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>Total Area</th>
+                        <td>{{ village["total_area"] or "-" }}</td>
+                    </tr>
+
+                </table>
+
+                <br>
+
+                <h2>📊 Village Statistics</h2>
+
+                <table>
+
+                    <tr>
+                        <th>👨 Male Members</th>
+                        <td>{{ male_count }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>👩 Female Members</th>
+                        <td>{{ female_count }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>👨‍👩‍👧‍👦 Total Family Members</th>
+                        <td>{{ member_count }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>🏠 Total Families</th>
+                        <td>{{ family_count }}</td>
+                    </tr>
+
+                    <tr>
+                        <th>👥 Total Population</th>
+                        <td>
+                            {{ info["population"] if info else member_count }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>🏠 Total Houses</th>
+                        <td>
+                            {{ info["houses"] if info else "-" }}
+                        </td>
+                    </tr>
+
+                </table>
+
+                <br>
+
+                <h2>📱 Contact & Other Information</h2>
+
+                <table>
+
+                    <tr>
+                        <th>Mobile Number</th>
+                        <td>
+                            {{ info["mobile"] if info else "-" }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Revenue</th>
+                        <td>
+                            {{ info["revenue"] if info else "-" }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>Other Information</th>
+                        <td>
+                            {{ info["other_info"] if info else "-" }}
+                        </td>
+                    </tr>
+
+                </table>
+
+                <br>
+
+                <div style="
+                    display:flex;
+                    gap:12px;
+                    flex-wrap:wrap;
+                    justify-content:center;
+                ">
+
+                    <a
+                        href="/families/{{ village['id'] }}"
+                        class="modern-btn btn-info"
+                    >
+                        👨‍👩‍👧 Family Information
+                    </a>
+
+                    <a
+                        href="/new-application/{{ village['id'] }}"
+                        class="modern-btn"
+                    >
+                        📝 New Application
+                    </a>
+
+                    <a
+                        href="/village/{{ village['id'] }}"
+                        class="modern-btn btn-back"
+                    >
+                        ← Back
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        """,
+        village=village,
+        info=info,
+        family_count=family_count,
+        male_count=male_count,
+        female_count=female_count,
+        member_count=member_count
+    )
+
+# =========================================================
+# EDIT VILLAGE INFORMATION
+# =========================================================
+
+@app.route("/edit-village-info/<int:village_id>", methods=["GET", "POST"])
+def edit_village_info(village_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    village = conn.execute("""
+        SELECT *
+        FROM villages
+        WHERE id = ?
+    """, (village_id,)).fetchone()
+
+    if village is None:
+        conn.close()
+        return "Village not found."
+
+    info = conn.execute("""
+        SELECT *
+        FROM village_info
+        WHERE village_id = ?
+    """, (village_id,)).fetchone()
+
+    if request.method == "POST":
+
+        village_name = request.form.get("village_name", "").strip()
+        village_code = request.form.get("village_code", "").strip()
+        mandal = request.form.get("mandal", "").strip()
+        district = request.form.get("district", "").strip()
+        pin_code = request.form.get("pin_code", "").strip()
+        habitation = request.form.get("habitation", "").strip()
+        total_area = request.form.get("total_area", "").strip()
+
+        population = request.form.get("population", "0").strip()
+        houses = request.form.get("houses", "0").strip()
+        revenue = request.form.get("revenue", "0").strip()
+        mobile = request.form.get("mobile", "").strip()
+        other_info = request.form.get("other_info", "").strip()
+
+        if not village_name:
+            conn.close()
+            return "Village Name is required."
+
+        # UPDATE VILLAGE DETAILS
+        conn.execute("""
+            UPDATE villages
+            SET
+                name = ?,
+                village_code = ?,
+                mandal = ?,
+                district = ?,
+                pin_code = ?,
+                habitation = ?,
+                total_area = ?
+            WHERE id = ?
+        """, (
+            village_name,
+            village_code,
+            mandal,
+            district,
+            pin_code,
+            habitation,
+            total_area,
+            village_id
+        ))
+
+        # UPDATE EXISTING VILLAGE INFO
+        if info:
+
+            conn.execute("""
+                UPDATE village_info
+                SET
+                    population = ?,
+                    houses = ?,
+                    revenue = ?,
+                    mobile = ?,
+                    other_info = ?
+                WHERE village_id = ?
+            """, (
+                population or 0,
+                houses or 0,
+                revenue or 0,
+                mobile,
+                other_info,
+                village_id
+            ))
+
+        # CREATE VILLAGE INFO IF NOT EXISTS
+        else:
+
+            conn.execute("""
+                INSERT INTO village_info (
+                    village_id,
+                    population,
+                    houses,
+                    revenue,
+                    mobile,
+                    other_info
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                village_id,
+                population or 0,
+                houses or 0,
+                revenue or 0,
+                mobile,
+                other_info
+            ))
+
+        conn.commit()
+        conn.close()
+
+        return redirect(
+            "/village-info/" + str(village_id)
+        )
+
+    conn.close()
+
+    return render_template_string(
+        STYLE + """
+
+        <div class="container">
+
+            <div class="card">
+
+                <h1 style="text-align:center;">
+                    ✏️ Edit Village Information
+                </h1>
+
+                <h2 style="text-align:center;">
+                    🏘️ {{ village["name"] }}
+                </h2>
+
+                <hr>
+
+                <form method="POST">
+
+                    <h2>📍 Basic Village Details</h2>
+
+                    <label>Village Name</label>
+
+                    <input
+                        type="text"
+                        name="village_name"
+                        value="{{ village['name'] or '' }}"
+                        required
+                    >
+
+                    <label>Village Code</label>
+
+                    <input
+                        type="text"
+                        name="village_code"
+                        value="{{ village['village_code'] or '' }}"
+                    >
+
+                    <label>Mandal</label>
+
+                    <input
+                        type="text"
+                        name="mandal"
+                        value="{{ village['mandal'] or '' }}"
+                    >
+
+                    <label>District</label>
+
+                    <input
+                        type="text"
+                        name="district"
+                        value="{{ village['district'] or '' }}"
+                    >
+
+                    <label>PIN Code</label>
+
+                    <input
+                        type="text"
+                        name="pin_code"
+                        value="{{ village['pin_code'] or '' }}"
+                    >
+
+                    <label>Habitation</label>
+
+                    <input
+                        type="text"
+                        name="habitation"
+                        value="{{ village['habitation'] or '' }}"
+                    >
+
+                    <label>Total Area</label>
+
+                    <input
+                        type="text"
+                        name="total_area"
+                        value="{{ village['total_area'] or '' }}"
+                        placeholder="Example: 125 acres"
+                    >
+
+                    <h2>📊 Village Statistics</h2>
+
+                    <label>Total Population</label>
+
+                    <input
+                        type="number"
+                        name="population"
+                        value="{{ info['population'] if info else 0 }}"
+                        min="0"
+                    >
+
+                    <label>Total Houses</label>
+
+                    <input
+                        type="number"
+                        name="houses"
+                        value="{{ info['houses'] if info else 0 }}"
+                        min="0"
+                    >
+
+                    <label>Revenue</label>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="revenue"
+                        value="{{ info['revenue'] if info else 0 }}"
+                        min="0"
+                    >
+
+                    <label>Mobile Number</label>
+
+                    <input
+                        type="text"
+                        name="mobile"
+                        value="{{ info['mobile'] if info else '' }}"
+                    >
+
+                    <label>Other Information</label>
+
+                    <textarea
+                        name="other_info"
+                        rows="5"
+                        placeholder="Enter other village information"
+                    >{{ info['other_info'] if info else '' }}</textarea>
+
+                    <br>
+
+                    <button
+                        type="submit"
+                        class="modern-btn btn-info"
+                    >
+                        💾 Save Village Information
+                    </button>
+
+                    <a
+                        href="/village-info/{{ village['id'] }}"
+                        class="modern-btn btn-back"
+                    >
+                        ← Cancel
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        """,
+        village=village,
+        info=info
+    )
     
 # =========================================================
 # DASHBOARD
@@ -2668,8 +3710,9 @@ body {
             </a>
 
             {% if villages %}
-            <a href="/village/{{ villages[0]['id'] }}">
-                🏢 Village Information
+
+            <a href="/village-info/{{ villages[0]['id'] }}" class="modern-btn">
+                ✏️ Village Information
             </a>
 
             <a href="/families/{{ villages[0]['id'] }}">
@@ -2931,8 +3974,6 @@ def village_page(village_id):
 
     if not logged_in():
         return redirect("/")
-
-    return redirect("/dashboard")
 
     conn = get_db()
 
