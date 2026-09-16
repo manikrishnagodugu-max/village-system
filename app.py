@@ -288,6 +288,30 @@ def create_admin_user():
             )
             conn.commit()
 
+    # =====================================================
+    # ADD VILLAGE INFORMATION COLUMNS
+    # =====================================================
+
+    village_columns = [
+        ("village_code", "TEXT DEFAULT ''"),
+        ("mandal", "TEXT DEFAULT ''"),
+        ("district", "TEXT DEFAULT ''"),
+        ("pin_code", "TEXT DEFAULT ''"),
+        ("habitation", "TEXT DEFAULT ''"),
+        ("total_area", "TEXT DEFAULT ''"),
+        ("village_photo", "TEXT DEFAULT ''")
+    ]
+
+    for column_name, column_type in village_columns:
+        try:
+            conn.execute(
+                f"ALTER TABLE villages ADD COLUMN {column_name} {column_type}"
+            )
+        except sqlite3.OperationalError:
+            pass
+
+    conn.commit()
+
     conn.close()
 
 
@@ -787,9 +811,11 @@ button,
 
 .options-card {
     display: grid;
-    grid-template-columns: repeat(6, 185px);
+    grid-template-columns: repeat(4, 1fr);
     justify-content: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 18px;
+    width: 100%;
 }
 
 .options-card h2,
@@ -800,18 +826,18 @@ button,
 }
 
 .options-card .modern-btn {
-    width: 185px !important;
+    width: 100% !important;
+    min-width: 0 !important;
     height: 60px !important;
-    min-width: 185px !important;
     min-height: 60px !important;
 
     margin: 0 !important;
     padding: 8px 10px !important;
 
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
     padding: 8px 12px;
@@ -1265,10 +1291,6 @@ body {
 # LOGIN
 # =========================================================
 
-# =========================================================
-# LOGIN
-# =========================================================
-
 @app.route("/", methods=["GET", "POST"])
 def login():
     error = False
@@ -1281,7 +1303,8 @@ def login():
         conn = get_db()
 
         user = conn.execute(
-            "SELECT * FROM users WHERE user_id = ? AND active = 1",
+            "SELECT * FROM users" \
+            " WHERE user_id = ? AND active = 1",
             (user_id,)
         ).fetchone()
 
@@ -1294,1271 +1317,1042 @@ def login():
             return redirect("/dashboard")
 
         error = True
-    return render_template_string(
-    """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <title>Secure Login - Village Information</title>
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <style>
+<title>Village Revenue Officer - Village Information System</title>
 
-        * {
-            box-sizing: border-box;
-        }
+<style>
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: Arial, sans-serif;
-
-            background:
-                radial-gradient(circle at top left, #2563eb 0%, transparent 35%),
-                radial-gradient(circle at bottom right, #0ea5e9 0%, transparent 35%),
-                linear-gradient(135deg, #0f172a, #1e3a8a);
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .login-wrapper {
-            width: 100%;
-            max-width: 440px;
-            padding: 20px;
-        }
-
-        .login-card {
-            position: relative;
-            background: rgba(255,255,255,0.97);
-            border-radius: 28px;
-            padding: 40px 35px;
-            text-align: center;
-
-            box-shadow:
-                0 25px 70px rgba(0,0,0,0.35),
-                0 0 0 1px rgba(255,255,255,0.25);
-        }
-
-        .lock-circle {
-            width: 88px;
-            height: 88px;
-            margin: -78px auto 18px;
-
-            border-radius: 50%;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-
-            font-size: 42px;
-
-            box-shadow:
-                0 15px 30px rgba(37,99,235,0.40);
-        }
-
-        .title {
-            margin: 8px 0 5px;
-            font-size: 28px;
-            font-weight: 800;
-            color: #172554;
-        }
-
-        .subtitle {
-            margin-bottom: 28px;
-            color: #64748b;
-            font-size: 15px;
-        }
-
-        .input-group {
-            position: relative;
-            margin-bottom: 18px;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-            z-index: 2;
-        }
-
-        .login-input {
-            width: 100%;
-            height: 55px;
-
-            border: 2px solid #e2e8f0;
-            border-radius: 14px;
-
-            padding: 0 48px;
-
-            font-size: 16px;
-            outline: none;
-
-            transition: 0.25s;
-            background: #f8fafc;
-        }
-
-        .login-input:focus {
-            border-color: #2563eb;
-            background: white;
-
-            box-shadow:
-                0 0 0 4px rgba(37,99,235,0.12);
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-
-            transform: translateY(-50%);
-
-            border: none;
-            background: transparent;
-
-            font-size: 20px;
-            cursor: pointer;
-        }
-
-        .login-button {
-            width: 100%;
-            height: 55px;
-
-            margin-top: 8px;
-
-            border: none;
-            border-radius: 14px;
-
-            background: linear-gradient(
-                135deg,
-                #2563eb,
-                #1d4ed8
-            );
-
-            color: white;
-
-            font-size: 17px;
-            font-weight: 700;
-
-            cursor: pointer;
-
-            box-shadow:
-                0 12px 25px rgba(37,99,235,0.30);
-
-            transition: 0.25s;
-        }
-
-        .login-button:hover {
-            transform: translateY(-2px);
-
-            box-shadow:
-                0 16px 30px rgba(37,99,235,0.40);
-        }
-
-        .security {
-            margin-top: 22px;
-
-            padding: 12px;
-
-            border-radius: 12px;
-
-            background: #eff6ff;
-            color: #1e40af;
-
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .error {
-            margin-top: 15px;
-
-            padding: 10px;
-
-            border-radius: 10px;
-
-            background: #fee2e2;
-            color: #b91c1c;
-
-            font-weight: 600;
-        }
-
-        .footer {
-            margin-top: 22px;
-
-            font-size: 12px;
-            color: #94a3b8;
-        }
-
-        @media (max-width: 500px) {
-
-            .login-wrapper {
-                padding: 15px;
-            }
-
-            .login-card {
-                padding: 35px 22px;
-            }
-
-            .title {
-                font-size: 24px;
-            }
-        }
-
-        </style>
-    </head>
-
-    <body>
-
-        <div class="login-wrapper">
-
-            <div class="login-card">
-
-                <div class="lock-circle">
-                    🔐
-                </div>
-
-                <div class="title">
-                    Village Information
-                </div>
-
-                <div class="subtitle">
-                    Secure Administrator Login
-                </div>
-
-                <form method="POST">
-
-                    <div class="input-group">
-
-                        <span class="input-icon">
-                            👤
-                        </span>
-
-                        <input
-                            class="login-input"
-                            type="text"
-                            name="user_id"
-                            placeholder="Enter User ID"
-                            autocomplete="username"
-                            required
-                        >
-
-                    </div>
-
-
-                    <div class="input-group">
-
-                        <span class="input-icon">
-                            🔑
-                        </span>
-
-                        <input
-                            class="login-input"
-                            id="loginPassword"
-                            type="password"
-                            name="password"
-                            placeholder="Enter Password"
-                            autocomplete="current-password"
-                            required
-                        >
-
-                        <button
-                            type="button"
-                            class="password-toggle"
-                            onclick="togglePassword()"
-                            id="passwordButton"
-                        >
-                            👁️
-                        </button>
-
-                    </div>
-
-
-                    <button
-                        class="login-button"
-                        type="submit"
-                    >
-                        🔓 Secure Login
-                    </button>
-
-                </form>
-
-
-                {% if error %}
-
-                    <div class="error">
-                        ❌ Invalid User ID or Password
-                    </div>
-
-                {% endif %}
-
-
-                <div class="security">
-                    🛡️ Authorized Users Only
-                </div>
-
-                <div class="footer">
-                    © Village Information System
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <script>
-
-        function togglePassword() {
-
-            const password =
-                document.getElementById("loginPassword");
-
-            const button =
-                document.getElementById("passwordButton");
-
-            if (password.type === "password") {
-
-                password.type = "text";
-                button.innerHTML = "🙈";
-
-            } else {
-
-                password.type = "password";
-                button.innerHTML = "👁️";
-
-            }
-
-        }
-
-        </script>
-
-    </body>
-    </html>
-    """,
-    error=error
-)
-
-    # Wrong login
-    error = True
-
-    return render_template_string(
-        STYLE + """
-
-        <style>
-
-        /* ===== PREMIUM SECURITY LOGIN ===== */
-
-        .login-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-
-            background:
-                radial-gradient(
-                    circle at 15% 20%,
-                    rgba(37, 99, 235, 0.35),
-                    transparent 35%
-                ),
-                radial-gradient(
-                    circle at 85% 75%,
-                    rgba(14, 165, 233, 0.25),
-                    transparent 35%
-                ),
-                linear-gradient(
-                    135deg,
-                    #020617,
-                    #071a3d,
-                    #0b2d63
-                );
-        }
-
-        /* Background security circles */
-
-        .security-circle {
-            position: absolute;
-            border: 1px solid rgba(96, 165, 250, 0.15);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .circle-one {
-            width: 500px;
-            height: 500px;
-            right: -180px;
-            top: -120px;
-        }
-
-        .circle-two {
-            width: 350px;
-            height: 350px;
-            left: -160px;
-            bottom: -100px;
-        }
-
-        /* Background lock */
-
-        .background-lock {
-            position: absolute;
-            right: 7%;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 230px;
-            opacity: 0.055;
-            filter: blur(1px);
-            pointer-events: none;
-        }
-
-        .background-shield {
-            position: absolute;
-            left: 5%;
-            top: 18%;
-            font-size: 180px;
-            opacity: 0.045;
-            pointer-events: none;
-        }
-
-        /* Login card */
-
-        .premium-login-card {
-            width: 430px;
-            max-width: calc(100% - 30px);
-            padding: 42px 38px 30px;
-
-            background: rgba(255, 255, 255, 0.97);
-
-            border-radius: 28px;
-
-            box-shadow:
-                0 30px 80px rgba(0, 0, 0, 0.45),
-                0 0 40px rgba(37, 99, 235, 0.18);
-
-            position: relative;
-            z-index: 5;
-
-            text-align: center;
-
-            border: 1px solid rgba(255, 255, 255, 0.7);
-        }
-
-        /* Lock logo */
-
-        .premium-lock {
-            width: 92px;
-            height: 92px;
-
-            margin: 0 auto 18px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border-radius: 50%;
-
-            font-size: 46px;
-
-            background:
-                linear-gradient(
-                    145deg,
-                    #2563eb,
-                    #0b3b9e
-                );
-
-            box-shadow:
-                0 12px 30px rgba(37, 99, 235, 0.4),
-                inset 0 1px 1px rgba(255,255,255,0.4);
-
-            border: 4px solid rgba(147, 197, 253, 0.7);
-        }
-
-        .premium-login-card h1 {
-            margin: 8px 0 5px;
-            color: #123a7a;
-            font-size: 32px;
-            font-weight: 800;
-        }
-
-        .secure-title {
-            color: #64748b;
-            font-size: 17px;
-            margin-bottom: 28px;
-        }
-
-        /* Security line */
-
-        .security-line {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: center;
-            margin: 10px 0 25px;
-            color: #64748b;
-            font-size: 14px;
-        }
-
-        .security-line::before,
-        .security-line::after {
-            content: "";
-            height: 1px;
-            width: 55px;
-            background: #cbd5e1;
-        }
-
-        /* Labels */
-
-        .login-label {
-            display: block;
-            text-align: left;
-            margin-bottom: 8px;
-            color: #173b69;
-            font-weight: 700;
-            font-size: 16px;
-        }
-
-        /* Inputs */
-
-        .login-input {
-            width: 100%;
-            box-sizing: border-box;
-
-            padding: 16px 18px;
-
-            margin-bottom: 20px;
-
-            border: 1px solid #cbd5e1;
-            border-radius: 13px;
-
-            font-size: 16px;
-
-            outline: none;
-
-            background: #ffffff;
-
-            transition: 0.25s;
-        }
-
-        .login-input:focus {
-            border-color: #2563eb;
-
-            box-shadow:
-                0 0 0 4px rgba(37, 99, 235, 0.12);
-        }
-
-        /* Login button */
-
-        .premium-login-btn {
-            width: 100%;
-
-            padding: 16px;
-
-            margin-top: 5px;
-
-            border: none;
-            border-radius: 14px;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #2563eb,
-                    #0b3b9e
-                );
-
-            color: white;
-
-            font-size: 18px;
-            font-weight: 800;
-
-            cursor: pointer;
-
-            box-shadow:
-                0 12px 25px rgba(37, 99, 235, 0.35);
-
-            transition: 0.25s;
-        }
-
-        .premium-login-btn:hover {
-            transform: translateY(-2px);
-
-            box-shadow:
-                0 16px 32px rgba(37, 99, 235, 0.45);
-        }
-
-        .premium-login-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Error */
-
-        .login-error {
-            background: #fef2f2;
-            color: #b91c1c;
-
-            border: 1px solid #fecaca;
-
-            border-radius: 10px;
-
-            padding: 10px;
-
-            margin-bottom: 18px;
-
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        /* Authorized users */
-
-        .authorized {
-            margin-top: 22px;
-
-            color: #64748b;
-
-            font-size: 14px;
-        }
-
-        /* Footer */
-
-        .login-footer {
-            margin-top: 24px;
-
-            color: #64748b;
-
-            font-size: 14px;
-        }
-
-        /* Mobile */
-
-        @media (max-width: 600px) {
-
-            .premium-login-card {
-                padding: 32px 24px 25px;
-            }
-
-            .premium-login-card h1 {
-                font-size: 27px;
-            }
-
-            .background-lock {
-                font-size: 150px;
-            }
-
-            .background-shield {
-                font-size: 120px;
-            }
-
-        }
-
-        </style>
-
-
-        <div class="login-page">
-
-            <div class="security-circle circle-one"></div>
-            <div class="security-circle circle-two"></div>
-
-            <div class="background-lock">
-                🔒
-            </div>
-
-            <div class="background-shield">
-                🛡️
-            </div>
-
-
-            <div class="premium-login-card">
-
-                <div class="premium-lock">
-                    🔐
-                </div>
-
-                <h1>
-                    Village Information
-                </h1>
-
-                <div class="secure-title">
-                    Secure Login
-                </div>
-
-                <div class="security-line">
-                    🛡️ Protected Access
-                </div>
-
-
-                {% if error %}
-
-                <div class="login-error">
-                    ⚠️ Invalid User ID or Password
-                </div>
-
-                {% endif %}
-
-
-                <form method="POST">
-
-                    <label class="login-label">
-                        User ID
-                    </label>
-
-                    <input
-                        class="login-input"
-                        type="text"
-                        name="user_id"
-                        placeholder="Enter User ID"
-                        autocomplete="username"
-                        required
-                    >
-
-
-                    <label class="login-label">
-                        Password
-                    </label>
-
-                    <input
-                        class="login-input"
-                        type="password"
-                        name="password"
-                        placeholder="Enter Password"
-                        autocomplete="current-password"
-                        required
-                    >
-
-
-                    <button
-                        class="premium-login-btn"
-                        type="submit"
-                    >
-                        🔐 Login Securely
-                    </button>
-
-                </form>
-
-
-                <div class="authorized">
-                    🛡️ Authorized Users Only
-                </div>
-
-                <div class="login-footer">
-                    © Village Information System
-                </div>
-
-            </div>
-
-        </div>
-
-        """,
-        error=error
-    )
-
-    # =====================================================
-    # NEW LOGIN PAGE
-    # =====================================================
-
-    return render_template_string(
-        STYLE + """
-
-        <style>
-
-        .login-page::before {
-    content: "🔒";
-    position: absolute;
-    font-size: 280px;
-    opacity: 0.06;
-    color: white;
-    right: 5%;
-    bottom: -40px;
-    transform: rotate(-10deg);
+* {
+    box-sizing: border-box;
 }
 
-.login-page::after {
-    content: "🛡️";
-    position: absolute;
-    font-size: 220px;
-    opacity: 0.05;
-    color: white;
-    left: 4%;
-    top: 8%;
-}
-
-        .login-page {
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
     min-height: 100vh;
+
+    background:
+        linear-gradient(rgba(220,240,255,0.35), rgba(30,90,60,0.35)),
+        background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.85) 0%, transparent 18%),
+    radial-gradient(circle at 80% 15%, rgba(255,255,255,0.75) 0%, transparent 16%),
+    linear-gradient(
+        to bottom,
+        #8ed8ff 0%,
+        #cceeff 35%,
+        #b8dfb0 55%,
+        #78bd68 72%,
+        #3f9148 100%
+    );background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.85) 0%, transparent 18%),
+    radial-gradient(circle at 80% 15%, rgba(255,255,255,0.75) 0%, transparent 16%),
+    linear-gradient(
+        to bottom,
+        #8ed8ff 0%,
+        #cceeff 35%,
+        #b8dfb0 55%,
+        #78bd68 72%,
+        #3f9148 100%
+    );;
+
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+
+    color: #123a7a;
+}
+
+/* ================= HEADER ================= */
+
+.top-header {
+    width: 94%;
+    margin: 15px auto 0;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 12px 20px;
+
+    background: rgba(255,255,255,0.88);
+    border-radius: 18px;
+
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.gov-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.gov-logo {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+
+    background: radial-gradient(circle,#facc15 20%,#16a34a 22%,#15803d 65%,#064e3b 66%);
+    border: 4px solid #166534;
+
     display: flex;
     align-items: center;
     justify-content: center;
 
-    background:
-        linear-gradient(rgba(10, 35, 80, 0.82), rgba(20, 65, 130, 0.88)),
-        radial-gradient(circle at top, #3b82f6, #07152f 70%);
-
-    position: relative;
-    overflow: hidden;
+    color: white;
+    font-weight: 800;
+    font-size: 11px;
+    text-align: center;
 }
 
-        .login-card {
-            width: 100%;
-            max-width: 430px;
-            background: rgba(255,255,255,0.97);
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 15px 45px rgba(0,0,0,0.18);
-            text-align: center;
-            box-sizing: border-box;
-        }
+.gov-name {
+    font-size: 23px;
+    font-weight: 800;
+    color: #123a7a;
+}
 
-        .login-icon {
-            width: 85px;
-            height: 85px;
-            margin: 0 auto 18px;
-            border-radius: 50%;
-            background: #2563eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 42px;
-            box-shadow: 0 8px 20px rgba(37,99,235,0.30);
-        }
+.gov-dept {
+    font-size: 18px;
+    font-weight: 700;
+    color: #166534;
+    margin-top: 3px;
+}
 
-        .login-title {
-            margin: 0;
-            color: #1e3a8a;
-            font-size: 30px;
-        }
+.gov-sub {
+    font-size: 13px;
+    color: #475569;
+    margin-top: 4px;
+}
 
-        .login-subtitle {
-            margin: 8px 0 30px;
-            color: #64748b;
-            font-size: 16px;
-        }
+.header-right {
+    text-align: right;
+}
 
-        .login-label {
-            display: block;
-            text-align: left;
-            margin-bottom: 7px;
-            color: #334155;
-            font-weight: bold;
-        }
+.lang-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 5px;
+    margin-bottom: 10px;
+}
 
-        .login-input-box {
-            position: relative;
-            margin-bottom: 20px;
-        }
+.lang-btn {
+    padding: 9px 22px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #123a7a;
+    font-weight: 700;
+    cursor: pointer;
+}
 
-        .login-input {
-            width: 100%;
-            height: 52px;
-            padding: 0 16px 0 48px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
+.lang-btn.active {
+    background: #2563eb;
+    color: white;
+}
 
-        .login-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
-        }
+.date-time {
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
 
-        .input-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-        }
+/* ================= MAIN ================= */
 
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 19px;
-            padding: 5px;
-        }
+.main-layout {
+    width: 94%;
+    max-width: 1450px;
 
-        .login-button {
-            width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            font-size: 17px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 5px;
-            box-shadow: 0 8px 18px rgba(37,99,235,0.25);
-        }
+    margin: 20px auto;
 
-        .login-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 22px rgba(37,99,235,0.32);
-        }
+    display: grid;
+    grid-template-columns: 270px minmax(400px, 1fr) 270px;
 
-        .login-footer {
-            margin-top: 25px;
-            color: #64748b;
-            font-size: 13px;
-        }
+    gap: 20px;
 
-        @media (max-width: 500px) {
+    align-items: stretch;
+}
 
-            .login-card {
-                padding: 30px 22px;
-            }
+/* ================= SIDE PANELS ================= */
 
-            .login-title {
-                font-size: 25px;
-            }
+.side-panel {
+    background: rgba(255,255,255,0.88);
 
-        }
+    border-radius: 20px;
 
-        </style>
+    padding: 22px;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+
+    backdrop-filter: blur(8px);
+}
+
+.side-item {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 13px 8px;
+
+    border-bottom: 1px solid rgba(148,163,184,0.25);
+}
+
+.side-icon {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: #e0f2fe;
+
+    font-size: 23px;
+}
+
+.side-text strong {
+    display: block;
+    font-size: 14px;
+    color: #123a7a;
+}
+
+.side-text span {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.side-quote {
+    margin-top: 25px;
+    text-align: center;
+
+    font-style: italic;
+
+    color: #166534;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* ================= LOGIN CARD ================= */
+
+.login-card {
+    background: rgba(255,255,255,0.96);
+
+    border-radius: 25px;
+
+    padding: 35px 45px;
+
+    box-shadow:
+        0 20px 55px rgba(0,0,0,0.25);
+
+    text-align: center;
+}
+
+.village-icon {
+    width: 115px;
+    height: 85px;
+
+    margin: 0 auto 10px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 62px;
+}
+
+.login-title {
+    font-size: 30px;
+    font-weight: 800;
+
+    color: #123a7a;
+
+    margin: 5px 0;
+}
+
+.login-title-green {
+    font-size: 27px;
+    font-weight: 800;
+
+    color: #15803d;
+
+    margin-bottom: 10px;
+}
+
+.login-desc {
+    font-size: 14px;
+    color: #64748b;
+
+    margin-bottom: 18px;
+}
+
+.login-line {
+    width: 80%;
+    height: 2px;
+
+    margin: 0 auto 20px;
+
+    background: #dbeafe;
+}
+
+.login-user-title {
+    font-size: 19px;
+    font-weight: 800;
+
+    color: #123a7a;
+
+    margin-bottom: 5px;
+}
+
+.login-user-sub {
+    color: #64748b;
+    font-size: 13px;
+
+    margin-bottom: 18px;
+}
+
+/* ================= INPUT ================= */
+
+.input-box {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.input-box span {
+    position: absolute;
+
+    left: 15px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    font-size: 20px;
+}
+
+.input-box input {
+    width: 100%;
+
+    height: 55px;
+
+    border: 2px solid #dbeafe;
+
+    border-radius: 13px;
+
+    padding: 0 48px;
+
+    font-size: 16px;
+
+    outline: none;
+
+    background: #f8fafc;
+}
+
+.input-box input:focus {
+    border-color: #2563eb;
+
+    background: white;
+
+    box-shadow:
+        0 0 0 4px rgba(37,99,235,0.12);
+}
+
+.eye-btn {
+    position: absolute;
+
+    right: 10px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    border: none;
+
+    background: transparent;
+
+    cursor: pointer;
+
+    font-size: 20px;
+}
+
+/* ================= REMEMBER ================= */
+
+.login-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin: 5px 2px 18px;
+
+    font-size: 13px;
+}
+
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.remember input {
+    width: 18px;
+    height: 18px;
+}
+
+.forgot {
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* ================= LOGIN BUTTON ================= */
+
+.login-btn {
+    width: 100%;
+
+    height: 58px;
+
+    border: none;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(135deg,#2563eb,#0b3b9e);
+
+    color: white;
+
+    font-size: 19px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 10px 25px rgba(37,99,235,0.30);
+
+    transition: 0.25s;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* ================= SECURITY ================= */
+
+.security-box {
+    margin-top: 18px;
+
+    padding: 14px;
+
+    border-radius: 12px;
+
+    background: #ecfdf5;
+
+    color: #166534;
+
+    font-size: 13px;
+
+    font-weight: 700;
+}
+
+.error-box {
+    margin-bottom: 15px;
+
+    padding: 10px;
+
+    border-radius: 10px;
+
+    background: #fee2e2;
+
+    color: #b91c1c;
+
+    font-weight: 700;
+}
+
+/* ================= RIGHT PANEL ================= */
+
+.right-image {
+    width: 100%;
+    height: 150px;
+
+    border-radius: 15px;
+
+    object-fit: cover;
+
+    margin-bottom: 18px;
+}
+
+.right-title {
+    font-size: 18px;
+    font-weight: 800;
+
+    color: #123a7a;
+
+    margin-bottom: 12px;
+}
+
+.right-item {
+    padding: 12px 0;
+
+    border-bottom: 1px solid #e2e8f0;
+
+    font-size: 14px;
+}
+
+.right-item strong {
+    display: block;
+    color: #123a7a;
+}
+
+.right-item span {
+    color: #64748b;
+    font-size: 12px;
+}
+
+/* ================= BOTTOM BAR ================= */
+
+.bottom-bar {
+    width: 94%;
+    max-width: 1450px;
+
+    margin: 0 auto 15px;
+
+    background: rgba(255,255,255,0.86);
+
+    border-radius: 18px;
+
+    padding: 13px;
+
+    display: grid;
+    grid-template-columns: repeat(5,1fr);
+
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+
+    text-align: center;
+}
+
+.bottom-item {
+    color: #123a7a;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.bottom-item div {
+    font-size: 25px;
+    margin-bottom: 3px;
+}
+
+/* ================= FOOTER ================= */
+
+.footer {
+    text-align: center;
+
+    color: white;
+
+    font-size: 12px;
+
+    padding: 8px;
+}
+
+.footer strong {
+    color: #fef08a;
+}
+
+/* ================= MOBILE ================= */
+
+@media(max-width:1000px) {
+
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .side-panel {
+        display: none;
+    }
+
+    .login-card {
+        max-width: 650px;
+        margin: auto;
+    }
+
+    .bottom-bar {
+        grid-template-columns: repeat(5,1fr);
+    }
+}
+
+@media(max-width:600px) {
+
+    .top-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    .header-right {
+        text-align: center;
+    }
+
+    .lang-buttons {
+        justify-content: center;
+    }
+
+    .login-card {
+        padding: 25px 18px;
+    }
+
+    .login-title {
+        font-size: 24px;
+    }
+
+    .login-title-green {
+        font-size: 21px;
+    }
+
+    .bottom-bar {
+        grid-template-columns: repeat(5,1fr);
+        gap: 2px;
+    }
+
+    .bottom-item {
+        font-size: 9px;
+    }
+
+    .bottom-item div {
+        font-size: 20px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ================= HEADER ================= -->
+
+<div class="top-header">
+
+    <div class="gov-title">
+
+        <div class="gov-logo">
+            ANDHRA<br>PRADESH
+        </div>
+
+        <div>
+            <div class="gov-name">
+                Government of Andhra Pradesh
+            </div>
+
+            <div class="gov-dept">
+                Revenue Department
+            </div>
+
+            <div class="gov-sub">
+                People • Services • Prosperity
+            </div>
+        </div>
+
+    </div>
+
+    <div class="header-right">
+
+        <div class="lang-buttons">
+
+            <button class="lang-btn active">
+                తెలుగు
+            </button>
+
+            <button class="lang-btn">
+                English
+            </button>
+
+        </div>
+
+        <div class="date-time">
+
+            📅 <span id="date"></span>
+            <br>
+
+            🕐 <span id="time"></span>
+
+        </div>
+
+    </div>
+
+</div>
 
 
-        <div class="login-page">
+<!-- ================= MAIN ================= -->
 
-            <div class="login-card">
-
-                <div class="login-icon">
-                    🏠
-                </div>
-
-                <h1 class="login-title">
-                    Village Information
-                </h1>
-
-                <p class="login-subtitle">
-                    Secure Login
-                </p>
+<div class="main-layout">
 
 
-                <form method="POST">
+    <!-- LEFT -->
 
-                    <label class="login-label">
-                        User ID
-                    </label>
+    <div class="side-panel">
 
-                    <div class="login-input-box">
+        <div class="side-item">
 
-                        <span class="input-icon">
-                            👤
-                        </span>
+            <div class="side-icon">👥</div>
 
-                        <input
-                            class="login-input"
-                            type="text"
-                            name="user_id"
-                            placeholder="Enter User ID"
-                            autocomplete="username"
-                            required
-                        >
-
-                    </div>
-
-
-                    <label class="login-label">
-                        Password
-                    </label>
-
-                    <div class="login-input-box">
-
-                        <span class="input-icon">
-                            🔐
-                        </span>
-
-                        <input
-                            class="login-input"
-                            id="loginPassword"
-                            type="password"
-                            name="password"
-                            placeholder="Enter Password"
-                            autocomplete="current-password"
-                            required
-                        >
-
-                        <button
-                            type="button"
-                            class="password-toggle"
-                            onclick="togglePassword()"
-                            id="passwordButton"
-                        >
-                            👁️
-                        </button>
-
-                    </div>
-
-
-                    <button
-                        class="login-button"
-                        type="submit"
-                    >
-                        🔓 Login
-                    </button>
-
-                </form>
-
-
-                <div class="login-footer">
-                    © Village Information System
-                </div>
-
+            <div class="side-text">
+                <strong>Village Information</strong>
+                <span>View & Manage Village Data</span>
             </div>
 
         </div>
 
 
-        <script>
+        <div class="side-item">
 
-        function togglePassword() {
+            <div class="side-icon">👨‍👩‍👧</div>
 
-            const password =
-                document.getElementById("loginPassword");
-
-            const button =
-                document.getElementById("passwordButton");
-
-            if (password.type === "password") {
-
-                password.type = "text";
-                button.innerHTML = "🙈";
-
-            } else {
-
-                password.type = "password";
-                button.innerHTML = "👁️";
-
-            }
-
-        }
-
-        </script>
-
-    )
-
-    .login-subtitle {
-            margin: 8px 0 30px;
-            color: #64748b;
-            font-size: 16px;
-        }
-
-.login-label {
-            display: block;
-            text-align: left;
-            margin-bottom: 7px;
-            color: #334155;
-            font-weight: bold;
-        }
-
-.login-input-box {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-.login-input {
-            width: 100%;
-            height: 52px;
-            padding: 0 16px 0 48px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-.login-input:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-        }
-
-password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 19px;
-            padding: 5px;
-        }
-
-.login-button {
-            width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            font-size: 17px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 5px;
-            box-shadow: 0 8px 18px rgba(37,99,235,0.25);
-        }
-
-        .login-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 22px rgba(37,99,235,0.32);
-        }
-
-        .login-footer {
-            margin-top: 25px;
-            color: #64748b;
-            font-size: 13px;
-        }
-
-        @media (max-width: 500px) {
-
-            .login-card {
-                padding: 30px 22px;
-            }
-
-            .login-title {
-                font-size: 25px;
-            }
-
-        }
-
-        </style>
-
-        <div class="login-page">
-
-            <div class="login-card">
-
-                <div class="login-icon">
-                    🏠
-                </div>
-
-                <h1 class="login-title">
-                    Village Information
-                </h1>
-
-                <p class="login-subtitle">
-                    Secure Login
-                </p>
-
-                <form method="POST">
-
-                    <label class="login-label">
-                        User ID
-                    </label>
-
-                    <div class="login-input-box">
-
-                        <span class="input-icon">
-                            👤
-                        </span>
-
-                        <input
-                            class="login-input"
-                            type="text"
-                            name="user_id"
-                            placeholder="Enter User ID"
-                            autocomplete="username"
-                            required
-                        >
-
-                    </div>
-
-
-                    <label class="login-label">
-                        Password
-                    </label>
-
-                    <div class="login-input-box">
-
-                        <span class="input-icon">
-                            🔐
-                        </span>
-
-                        <input
-                            class="login-input"
-                            id="loginPassword"
-                            type="password"
-                            name="password"
-                            placeholder="Enter Password"
-                            autocomplete="current-password"
-                            required
-                        >
-
-                        <button
-                            type="button"
-                            class="password-toggle"
-                            onclick="togglePassword()"
-                            id="passwordButton"
-                        >
-                            👁️
-                        </button>
-
-                    </div>
-
-
-                    <button
-                        class="login-button"
-                        type="submit"
-                    >
-                        🔓 Login
-                    </button>
-
-                </form>
-
-                <div class="login-footer">
-                    © Village Information System
-                </div>
-
+            <div class="side-text">
+                <strong>Family Members</strong>
+                <span>Add / Update Details</span>
             </div>
 
         </div>
 
 
-        <script>
+        <div class="side-item">
 
-        function togglePassword() {
+            <div class="side-icon">📄</div>
 
-            const password =
-                document.getElementById("loginPassword");
+            <div class="side-text">
+                <strong>Revenue Records</strong>
+                <span>Land, Houses & Other Details</span>
+            </div>
 
-            const button =
-                document.getElementById("passwordButton");
+        </div>
 
-            if (password.type === "password") {
 
-                password.type = "text";
-                button.innerHTML = "🙈";
+        <div class="side-item">
 
-            } else {
+            <div class="side-icon">📊</div>
 
-                password.type = "password";
-                button.innerHTML = "👁️";
+            <div class="side-text">
+                <strong>Reports & Analytics</strong>
+                <span>Village Wise Reports</span>
+            </div>
 
+        </div>
+
+
+        <div class="side-item">
+
+            <div class="side-icon">⬇️</div>
+
+            <div class="side-text">
+                <strong>Export / Download</strong>
+                <span>Excel / PDF / Word</span>
+            </div>
+
+        </div>
+
+
+        <div class="side-item">
+
+            <div class="side-icon">⚙️</div>
+
+            <div class="side-text">
+                <strong>Settings</strong>
+                <span>Manage Profile & Preferences</span>
+            </div>
+
+        </div>
+
+
+        <div class="side-quote">
+            "Accurate Village Records<br>
+            for a Better Tomorrow"
+        </div>
+
+    </div>
+
+
+    <!-- CENTER LOGIN -->
+
+    <div class="login-card">
+
+        <div class="village-icon">
+            🏡
+        </div>
+
+        <div class="login-title">
+            Village Revenue Officer (V.R.O.)
+        </div>
+
+        <div class="login-title-green">
+            Village Information System
+        </div>
+
+        <div class="login-desc">
+            Accurate Records • Better Services • Stronger Villages
+        </div>
+
+        <div class="login-line"></div>
+
+        <div class="login-user-title">
+            👤 Login to Continue
+        </div>
+
+        <div class="login-user-sub">
+            Access village records and revenue services
+        </div>
+
+
+        {% if error %}
+
+        <div class="error-box">
+            ⚠️ Invalid User ID or Password
+        </div>
+
+        {% endif %}
+
+
+        <form method="POST">
+
+            <div class="input-box">
+
+                <span>👤</span>
+
+                <input
+                    type="text"
+                    name="user_id"
+                    placeholder="Enter Username"
+                    autocomplete="username"
+                    required
+                >
+
+            </div>
+
+
+            <div class="input-box">
+
+                <span>🔒</span>
+
+                <input
+                    id="loginPassword"
+                    type="password"
+                    name="password"
+                    placeholder="Enter Password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button
+                    type="button"
+                    class="eye-btn"
+                    onclick="togglePassword()"
+                    id="eyeButton"
+                >
+                    👁️
+                </button>
+
+            </div>
+
+
+            <div class="login-options">
+
+                <label class="remember">
+
+                    <input type="checkbox" name="remember">
+
+                    <span>Remember Me</span>
+
+                </label>
+
+                <span class="forgot">
+                    Forgot Password?
+                </span>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="login-btn"
+            >
+                🔐 Login
+            </button>
+
+        </form>
+
+
+        <div class="security-box">
+            🛡️ Secure • Confidential • Authorized Users Only
+        </div>
+
+    </div>
+
+
+    <!-- RIGHT -->
+
+    <div class="side-panel">
+
+        <img
+            src="/static/village.jpg"
+            class="right-image"
+            alt="Village"
+        >
+
+        <div class="right-title">
+            📍 Village Information
+        </div>
+
+
+        <div class="right-item">
+
+            <strong>👥 Our Villages</strong>
+
+            <span>
+                Our People • Our Responsibility
+            </span>
+
+        </div>
+
+
+        <div class="right-item">
+
+            <strong>🌱 Clean Records</strong>
+
+            <span>
+                Transparent Services
+            </span>
+
+        </div>
+
+
+        <div class="right-item">
+
+            <strong>🏘️ Developed Villages</strong>
+
+            <span>
+                Better Records • Better Services
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================= BOTTOM ================= -->
+
+<div class="bottom-bar">
+
+    <div class="bottom-item">
+        <div>🎧</div>
+        Support
+    </div>
+
+    <div class="bottom-item">
+        <div>📖</div>
+        User Manual
+    </div>
+
+    <div class="bottom-item">
+        <div>❓</div>
+        Help
+    </div>
+
+    <div class="bottom-item">
+        <div>📞</div>
+        Contact
+    </div>
+
+    <div class="bottom-item">
+        <div>✉️</div>
+        Feedback
+    </div>
+
+</div>
+
+
+<!-- ================= FOOTER ================= -->
+
+<div class="footer">
+
+    © 2026 Village Revenue Officer (V.R.O.)
+    – Village Information System
+    <br>
+
+    <strong>
+        A Strong Village Builds a Stronger Andhra Pradesh
+    </strong>
+
+</div>
+
+
+<script>
+
+function updateDateTime() {
+
+    const now = new Date();
+
+    document.getElementById("date").innerText =
+        now.toLocaleDateString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
             }
+        );
 
-        }
+    document.getElementById("time").innerText =
+        now.toLocaleTimeString(
+            "en-IN",
+            {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            }
+        );
+}
 
-        </script>
-        """
-    )
+updateDateTime();
+
+setInterval(updateDateTime, 1000);
+
+
+function togglePassword() {
+
+    const password =
+        document.getElementById("loginPassword");
+
+    const button =
+        document.getElementById("eyeButton");
+
+    if (password.type === "password") {
+
+        password.type = "text";
+
+        button.innerHTML = "🙈";
+
+    } else {
+
+        password.type = "password";
+
+        button.innerHTML = "👁️";
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
+""", error=error)
+    
 # =========================================================
 # DASHBOARD
-# =========================================================
+# =====================1``====================================
 
 @app.route("/dashboard")
 def dashboard():
@@ -2571,7 +2365,7 @@ def dashboard():
     villages = conn.execute("""
         SELECT *
         FROM villages
-        `ORDER BY name`
+        ORDER BY name
     """).fetchall()
 
     # Total statistics
@@ -3107,107 +2901,6 @@ body {
 # =========================================================
 # ADD VILLAGE
 # =========================================================
-
-@app.route("/add-village", methods=["GET", "POST"])
-def add_village():
-
-    if not logged_in():
-        return redirect("/")
-
-    if request.method == "POST":
-
-        name = request.form.get(
-            "village_name",
-            ""
-        ).strip()
-
-        if not name:
-            return "Village name required."
-
-        conn = get_db()
-
-        try:
-
-            cursor = conn.execute("""
-                INSERT INTO villages(name)
-                VALUES(?)
-            """, (name,))
-
-            village_id = cursor.lastrowid
-
-            conn.execute("""
-                INSERT INTO village_info(village_id)
-                VALUES(?)
-            """, (village_id,))
-
-            conn.commit()
-
-        except sqlite3.IntegrityError:
-
-            conn.close()
-
-            return "Village already exists."
-
-        conn.close()
-
-        return redirect("/dashboard")
-
-    return render_template_string(
-        STYLE + """
-        <div class="container">
-
-            <div class="card">
-
-<div class="add-village-card">
-
-    <div class="add-village-icon">
-        🏡
-    </div>
-
-    <h1 class="add-village-title">
-        Add New Village
-    </h1>
-
-    <p class="add-village-subtitle">
-        Add a new village to your Village Information System
-    </p>
-
-    <form method="POST">
-
-        <label class="add-village-label">
-            🏘️ Village Name
-        </label>
-
-        <input
-            class="add-village-input"
-            type="text"
-            name="village_name"
-            placeholder="Enter village name"
-            required
-        >
-
-        <button
-            class="add-village-save"
-            type="submit"
-        >
-            ➕ Save Village
-        </button>
-
-    </form>
-
-    <a
-        class="add-village-back"
-        href="/dashboard"
-    >
-        ← Back to Dashboard
-    </a>
-
-</div>
-        """
-    )
-
-
-
 
 # =========================================================
 # VILLAGE PAGE
