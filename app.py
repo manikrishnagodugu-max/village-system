@@ -2384,6 +2384,24 @@ def dashboard():
         FROM family_members
     """).fetchone()[0]
 
+        # Male count
+    male_count = conn.execute("""
+        SELECT COALESCE(SUM(male_count), 0)
+        FROM village_info
+    """).fetchone()[0]
+
+    # Female count
+    female_count = conn.execute("""
+        SELECT COALESCE(SUM(female_count), 0)
+        FROM village_info
+    """).fetchone()[0]
+
+    # Families count
+    family_count = conn.execute("""
+        SELECT COUNT(DISTINCT family_id)
+        FROM family_members
+    """).fetchone()[0]
+
     important_details = conn.execute("""
         SELECT COUNT(*)
         FROM important_details
@@ -2645,7 +2663,9 @@ body {
 
         <div class="sidebar-menu">
 
-            <a href="/dashboard">🏠 Dashboard</a>
+            <a href="{{ url_for('dashboard') }}">
+                🏠 Dashboard
+            </a>
 
             {% if villages %}
             <a href="/village/{{ villages[0]['id'] }}">
@@ -2711,54 +2731,50 @@ body {
         <div class="content">
 
 
-            <!-- STATISTICS -->
+        <!-- STATISTICS -->
+        <div class="stats">
 
-            <div class="stats">
-
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-number">
-                        {{ population }}
-                    </div>
-                    <div class="stat-title">
-                        Population
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon">🏠</div>
-                    <div class="stat-number">
-                        {{ houses }}
-                    </div>
-                    <div class="stat-title">
-                        Houses
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon">👨‍👩‍👧</div>
-                    <div class="stat-number">
-                        {{ family_members }}
-                    </div>
-                    <div class="stat-title">
-                        Family Members
-                    </div>
-                </div>
-
-
-                <div class="stat-card">
-                    <div class="stat-icon">📋</div>
-                    <div class="stat-number">
-                        {{ important_details }}
-                    </div>
-                    <div class="stat-title">
-                        Important Details
-                    </div>
-                </div>
-
+        <!-- MALE -->
+        <a href="/members-reports/{{ villages[0]['id'] }}?gender=Male"
+        style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="cursor:pointer;">
+                <div class="stat-icon">👨</div>
+                <div class="stat-number">{{ male_count }}</div>
+                <div class="stat-title">Male</div>
             </div>
+        </a>
+
+        <!-- FEMALE -->
+        <a href="/members-reports/{{ villages[0]['id'] }}?gender=Female"
+        style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="cursor:pointer;">
+                <div class="stat-icon">👩</div>
+                <div class="stat-number">{{ female_count }}</div>
+                <div class="stat-title">Female</div>
+            </div>
+        </a>
+
+        <!-- FAMILIES -->
+        <a href="/families/{{ villages[0]['id'] }}"
+        style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="cursor:pointer;">
+                <div class="stat-icon">👨‍👩‍👧‍👦</div>
+                <div class="stat-number">{{ family_count }}</div>
+                <div class="stat-title">Families</div>
+            </div>
+        </a>
+
+        <!-- TOTAL VILLAGES -->
+        <a href="/dashboard"
+        style="text-decoration:none; color:inherit;">
+            <div class="stat-card" style="cursor:pointer;">
+                <div class="stat-icon">🏘️</div>
+                <div class="stat-number">{{ village_count }}</div>
+                <div class="stat-title">Total Villages</div>
+            </div>
+        </a>
+
+    </div>
 
 
             <!-- VILLAGE OPTIONS -->
@@ -2894,7 +2910,11 @@ body {
         population=population,
         houses=houses,
         family_members=family_members,
-        important_details=important_details
+        important_details=important_details,
+        male_count=male_count,
+        female_count=female_count,
+        family_count=family_count,
+        village_count=village_count
     )
 
 
