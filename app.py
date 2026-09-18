@@ -3391,6 +3391,187 @@ def edit_village_info(village_id):
         village=village,
         info=info
     )
+
+# =========================================================
+# DATA ENTRY MENU
+# =========================================================
+
+@app.route("/data-entry/<int:village_id>")
+def data_entry(village_id):
+
+    if not logged_in():
+        return redirect("/")
+
+    conn = get_db()
+
+    village = conn.execute("""
+        SELECT *
+        FROM villages
+        WHERE id = ?
+    """, (village_id,)).fetchone()
+
+    conn.close()
+
+    if village is None:
+        return "Village not found."
+
+    return render_template_string(
+        STYLE + """
+        <div class="container">
+
+            <div class="card">
+
+                <h1 style="text-align:center;color:#123a7a;">
+                    📝 Data Entry
+                </h1>
+
+                <h2 style="text-align:center;">
+                    🏡 {{ village["name"] }}
+                </h2>
+
+                <p style="
+                    text-align:center;
+                    color:#64748b;
+                    font-size:17px;
+                ">
+                    Select the information you want to enter
+                </p>
+
+                <div style="
+                    display:grid;
+                    grid-template-columns:repeat(3,1fr);
+                    gap:20px;
+                    margin-top:30px;
+                ">
+
+                    <!-- VILLAGE INFORMATION -->
+
+                    <a href="/edit-information/{{ village['id'] }}"
+                       style="
+                       text-decoration:none;
+                       background:linear-gradient(135deg,#2563eb,#3b82f6);
+                       color:white;
+                       padding:35px 20px;
+                       border-radius:20px;
+                       text-align:center;
+                       box-shadow:0 8px 20px rgba(0,0,0,0.15);
+                       ">
+
+                        <div style="font-size:50px;">
+                            🏡
+                        </div>
+
+                        <div style="
+                            font-size:21px;
+                            font-weight:800;
+                            margin-top:12px;
+                        ">
+                            1. Village Information
+                        </div>
+
+                        <div style="
+                            margin-top:8px;
+                            font-size:14px;
+                        ">
+                            Village Details, Population,
+                            Houses & Revenue
+                        </div>
+
+                    </a>
+
+
+                    <!-- FAMILY MEMBERS -->
+
+                    <a href="/add-family/{{ village['id'] }}"
+                       style="
+                       text-decoration:none;
+                       background:linear-gradient(135deg,#16a34a,#22c55e);
+                       color:white;
+                       padding:35px 20px;
+                       border-radius:20px;
+                       text-align:center;
+                       box-shadow:0 8px 20px rgba(0,0,0,0.15);
+                       ">
+
+                        <div style="font-size:50px;">
+                            👨‍👩‍👧
+                        </div>
+
+                        <div style="
+                            font-size:21px;
+                            font-weight:800;
+                            margin-top:12px;
+                        ">
+                            2. Family Members
+                        </div>
+
+                        <div style="
+                            margin-top:8px;
+                            font-size:14px;
+                        ">
+                            Personal, Address,
+                            Documents & Other Details
+                        </div>
+
+                    </a>
+
+
+                    <!-- LAND HOUSE REVENUE -->
+
+                    <a href="#"
+                       style="
+                       text-decoration:none;
+                       background:linear-gradient(135deg,#f59e0b,#f97316);
+                       color:white;
+                       padding:35px 20px;
+                       border-radius:20px;
+                       text-align:center;
+                       box-shadow:0 8px 20px rgba(0,0,0,0.15);
+                       ">
+
+                        <div style="font-size:50px;">
+                            🏠
+                        </div>
+
+                        <div style="
+                            font-size:21px;
+                            font-weight:800;
+                            margin-top:12px;
+                        ">
+                            3. Land, House & Revenue
+                        </div>
+
+                        <div style="
+                            margin-top:8px;
+                            font-size:14px;
+                        ">
+                            Land Details, House Details,
+                            Revenue & Documents
+                        </div>
+
+                    </a>
+
+                </div>
+
+
+                <div style="
+                    text-align:center;
+                    margin-top:30px;
+                ">
+
+                    <a href="/village/{{ village['id'] }}"
+                       class="modern-btn btn-back">
+                        ← Back to Village
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+        """,
+        village=village
+    )
     
 # =========================================================
 # DASHBOARD
@@ -4200,6 +4381,14 @@ def village_page(village_id):
                 👨‍👩‍👧 Family Information
                 <span class="option-count">{{ info["family_count"] if info else 0
                 }}</span>
+            </a>
+
+            <a
+                class="modern-btn"
+                style="background:linear-gradient(135deg,#0f766e,#14b8a6);"
+                href="/data-entry/{{ village['id'] }}"
+            >
+                📝 DATA ENTRY
             </a>
 
             <a
